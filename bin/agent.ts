@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { existsSync, lstatSync, mkdirSync, readdirSync, readlinkSync, symlinkSync, unlinkSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, renameSync, rmSync, symlinkSync, unlinkSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { parseArgs } from "node:util";
 
@@ -65,6 +66,119 @@ function link(cwd: string, toolNames: string[], force: boolean) {
   }
 }
 
+// content hash of a file or directory tree, for detecting identical items across tools
+function contentHash(path: string): string {
+  const hash = createHash("sha256");
+  const st = lstatSync(path);
+  if (st.isDirectory()) {
+    for (const name of readdirSync(path).sort()) {
+      hash.update(name).update("\0").update(contentHash(join(path, name))).update("\0");
+    }
+  } else {
+    hash.update(readFileSync(path));
+  }
+  return hash.digest("hex");
+}
+
+function moveInto(dest: string, src: string) {
+  mkdirSync(dirname(dest), { recursive: true });
+  renameSync(src, dest);
+}
+
+// items real (non-symlinked) content found at `containerPath` across every tool, keyed by tool name
+type RealRef = { tool: string; path: string };
+
+function realCopies(cwd: string, sourceName: string): { kind: "file" | "dir"; refs: RealRef[] } | null {
+  const refs: RealRef[] = [];
+  let kind: "file" | "dir" | null = null;
+  for (const [toolName, tool] of Object.entries(TOOLS)) {
+    for (const [target, source] of tool.links) {
+      if (source !== sourceName) continue;
+      const p = join(cwd, tool.dir, target);
+      const st = lstatSync(p, { throwIfNoEntry: false });
+      if (!st || st.isSymbolicLink()) continue; // missing, or already linked -> not local content
+      refs.push({ tool: toolName, path: p });
+      kind ??= st.isDirectory() ? "dir" : "file";
+    }
+  }
+  return kind ? { kind, refs } : null;
+}
+
+// merge `copies` of one item into `agentItemPath` (which doesn't exist yet): move the sole copy,
+// or dedupe identical copies, or report a conflict and leave everything untouched.
+function mergeNewItem(agentItemPath: string, copies: RealRef[]): boolean {
+  if (copies.length === 0) return false;
+  const hashes = copies.map((c) => contentHash(c.path));
+  if (new Set(hashes).size > 1) {
+    console.log(`x conflict: ${relative(process.cwd(), agentItemPath)} differs across ${copies.map((c) => c.tool).join(", ")} — resolve manually`);
+    return false;
+  }
+  moveInto(agentItemPath, copies[0].path);
+  for (const c of copies.slice(1)) rmSync(c.path, { recursive: true, force: true });
+  console.log(`+ ${relative(process.cwd(), agentItemPath)} (from ${copies.map((c) => c.tool).join(", ")})`);
+  return true;
+}
+
+// reconcile copies of an item that already exists in .agent: drop matching copies (link() will
+// re-symlink them), report conflicts and leave mismatched copies alone.
+function reconcileExistingItem(agentItemPath: string, copies: RealRef[]) {
+  const canonical = contentHash(agentItemPath);
+  for (const c of copies) {
+    if (contentHash(c.path) === canonical) {
+      rmSync(c.path, { recursive: true, force: true });
+    } else {
+      console.log(`x conflict: ${relative(process.cwd(), c.path)} differs from ${relative(process.cwd(), agentItemPath)} — resolve manually`);
+    }
+  }
+}
+
+function sot(cwd: string) {
+  const agentDir = join(cwd, AGENT_DIR);
+  if (!existsSync(agentDir)) {
+    console.error(`${AGENT_DIR}/ not found in ${cwd}`);
+    process.exitCode = 1;
+    return;
+  }
+
+  const sourceNames = new Set(Object.values(TOOLS).flatMap((t) => t.links.map(([, source]) => source)));
+
+  for (const sourceName of sourceNames) {
+    const found = realCopies(cwd, sourceName);
+    const agentPath = join(agentDir, sourceName);
+    if (!found && !existsSync(agentPath)) continue;
+    const kind = found?.kind ?? (lstatSync(agentPath).isDirectory() ? "dir" : "file");
+    const refs = found?.refs ?? [];
+
+    if (kind === "file") {
+      if (existsSync(agentPath)) reconcileExistingItem(agentPath, refs);
+      else mergeNewItem(agentPath, refs);
+      continue;
+    }
+
+    // dir: merge per top-level item, not the whole directory
+    mkdirSync(agentPath, { recursive: true });
+    const itemNames = new Set(readdirSync(agentPath));
+    for (const ref of refs) for (const child of readdirSync(ref.path)) itemNames.add(child);
+
+    for (const itemName of itemNames) {
+      const agentItemPath = join(agentPath, itemName);
+      const copies = refs
+        .map((r) => ({ tool: r.tool, path: join(r.path, itemName) }))
+        .filter((c) => existsSync(c.path));
+      if (existsSync(agentItemPath)) reconcileExistingItem(agentItemPath, copies);
+      else mergeNewItem(agentItemPath, copies);
+    }
+
+    // drop now-empty tool copies so link() can replace them with a whole-directory symlink
+    for (const ref of refs) {
+      if (existsSync(ref.path) && readdirSync(ref.path).length === 0) rmSync(ref.path, { recursive: true });
+    }
+  }
+
+  console.log("");
+  link(cwd, Object.keys(TOOLS), false);
+}
+
 function tree(dir: string, prefix = ""): string[] {
   if (!existsSync(dir)) return [];
   const entries = readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name));
@@ -121,12 +235,18 @@ switch (command) {
   case "graph":
     graph(cwd);
     break;
+  case "sot":
+    sot(cwd);
+    break;
   default:
     console.log(`usage: agent <command>
 
 commands:
   link [tool...] [--all] [--force]   symlink .agent/ into tool config dirs
   graph                              show .agent/ tree and current links
+  sot                                collect real content scattered across tool dirs back
+                                      into .agent (deduping identical items, flagging
+                                      conflicting ones), then link it out to every tool
 
 known tools: ${Object.keys(TOOLS).join(", ")}`);
     process.exitCode = command ? 1 : 0;
