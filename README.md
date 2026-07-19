@@ -21,6 +21,10 @@ bunx github:mikan-919/dotagents sot
 git-based npm installs — if `npx` fails with `EALLOWGIT`, use `bunx` or
 clone the repo and run `dist/agent.js` directly.)
 
+Note: `bunx` caches `github:` installs and won't pick up new commits on its
+own — if behavior looks stale, clear the cache with
+`rm -rf /tmp/bunx-*-dotagents*`.
+
 To use the short `agent` command name, install it globally:
 
 ```bash
