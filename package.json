@@ -1,0 +1,12 @@
+{
+  "name": "dotagents",
+  "version": "0.1.0",
+  "description": "Symlink .agent/ (shared AI agent config) into .claude, .codex, .cursor, etc.",
+  "type": "module",
+  "bin": {
+    "agent": "./bin/agent.ts"
+  },
+  "engines": {
+    "node": ">=23.6.0"
+  }
+}
