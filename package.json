@@ -4,9 +4,16 @@
   "description": "Symlink .agent/ (shared AI agent config) into .claude, .codex, .cursor, etc.",
   "type": "module",
   "bin": {
-    "agent": "./bin/agent.ts"
+    "agent": "./dist/agent.js"
   },
   "engines": {
-    "node": ">=23.6.0"
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "typescript": "^7.0.2"
   }
 }

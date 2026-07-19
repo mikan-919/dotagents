@@ -15,9 +15,9 @@ bunx github:mikan-919/dotagents graph
 bunx github:mikan-919/dotagents sot
 ```
 
-`npx github:...` works the same way on a normal machine. (Some sandboxed
-environments disable git-based npm installs — if `npx` fails with
-`EALLOWGIT`, use `bunx` or clone the repo and run `bin/agent.ts` directly.)
+`npx github:...` works the same way. (Some sandboxed environments disable
+git-based npm installs — if `npx` fails with `EALLOWGIT`, use `bunx` or
+clone the repo and run `dist/agent.js` directly.)
 
 To use the short `agent` command name, install it globally:
 
@@ -51,7 +51,8 @@ agent link --all
 
 Each tool maps its own expected file/dir names onto these. The mapping is
 a small hardcoded table in `bin/agent.ts` (`TOOLS`) — add a tool by adding
-an entry there.
+an entry there, then run `npm run build` to regenerate `dist/agent.js`
+(the committed file that `bin` actually points to).
 
 | tool   | dir       | links                                              |
 |--------|-----------|-----------------------------------------------------|
@@ -61,5 +62,9 @@ an entry there.
 
 ## Requirements
 
-Node >=23.6 or Bun. `bin/agent.ts` runs directly as TypeScript — no build
-step.
+Node >=18 or Bun. Source lives in `bin/agent.ts`; the published/executed
+file is the compiled `dist/agent.js`, committed so `npx`/`bunx` never need
+to run a build step. (Node's native TS support refuses to strip types for
+files under `node_modules`, which is where `npx`/`bunx` install git
+dependencies — hence shipping compiled JS instead of running `.ts`
+directly.)
