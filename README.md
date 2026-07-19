@@ -1,5 +1,7 @@
 # dotagents
 
+[![CI](https://github.com/mikan-919/dotagents/actions/workflows/ci.yml/badge.svg)](https://github.com/mikan-919/dotagents/actions/workflows/ci.yml)
+
 Keep one `.agent/` directory as the source of truth for AI agent config
 (`AGENTS.md`, `skills/`, `commands/`), and symlink it into `.claude`,
 `.codex`, `.cursor`, etc. instead of copy-pasting the same files into every
@@ -32,7 +34,23 @@ agent link --all
   into the given tools' config dirs (all known tools if none given).
   Existing real files are left alone unless `--force`.
 - **`agent graph`** — print the `.agent/` tree and the current link status
-  for every tool.
+  for every tool:
+
+  ```
+  .agent/
+  ├── AGENTS.md
+  └── skills/
+      └── review/
+          └── SKILL.md
+
+  .claude/
+    ✓ CLAUDE.md  -> ../.agent/AGENTS.md
+    ✗ skills     local copy, not linked (run: agent sot)
+    · commands   nothing to link
+  .codex/
+    ✓ AGENTS.md  -> ../.agent/AGENTS.md
+    ○ skills     not linked yet (run: agent link)
+  ```
 - **`agent sot`** — collect content that was edited directly inside a
   tool's config dir (instead of through the symlink) back into `.agent`.
   Identical copies found in multiple tools are merged into one; content
@@ -68,3 +86,17 @@ to run a build step. (Node's native TS support refuses to strip types for
 files under `node_modules`, which is where `npx`/`bunx` install git
 dependencies — hence shipping compiled JS instead of running `.ts`
 directly.)
+
+Symlinks are POSIX-style (`symlinkSync`), so Windows needs Developer Mode
+or an elevated shell; WSL works out of the box.
+
+## Development
+
+```bash
+npm ci
+npm test    # builds dist/ and runs the node:test suite
+```
+
+## License
+
+[MIT](LICENSE)

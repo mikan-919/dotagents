@@ -10,10 +10,35 @@
     "node": ">=18"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test",
+    "prepack": "npm run build"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",
     "typescript": "^7.0.2"
-  }
+  },
+  "license": "MIT",
+  "author": "mikan-919",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mikan-919/dotagents.git"
+  },
+  "bugs": "https://github.com/mikan-919/dotagents/issues",
+  "homepage": "https://github.com/mikan-919/dotagents#readme",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "cli",
+    "symlink",
+    "dotfiles",
+    "ai-agents",
+    "claude",
+    "codex",
+    "cursor",
+    "agents-md"
+  ]
 }

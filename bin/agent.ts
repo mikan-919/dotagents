@@ -228,31 +228,7 @@ function graph(cwd: string) {
   }
 }
 
-const { positionals, values } = parseArgs({
-  allowPositionals: true,
-  options: {
-    force: { type: "boolean", default: false },
-    all: { type: "boolean", default: false },
-  },
-});
-
-const [command, ...rest] = positionals;
-const cwd = process.cwd();
-
-switch (command) {
-  case "link": {
-    const toolNames = values.all || rest.length === 0 ? Object.keys(TOOLS) : rest;
-    link(cwd, toolNames, values.force);
-    break;
-  }
-  case "graph":
-    graph(cwd);
-    break;
-  case "sot":
-    sot(cwd);
-    break;
-  default:
-    console.log(`usage: agent <command>
+const USAGE = `usage: agent <command> [options]
 
 commands:
   link [tool...] [--all] [--force]   symlink .agent/ into tool config dirs
@@ -261,6 +237,53 @@ commands:
                                       into .agent (deduping identical items, flagging
                                       conflicting ones), then link it out to every tool
 
-known tools: ${Object.keys(TOOLS).join(", ")}`);
-    process.exitCode = command ? 1 : 0;
+options:
+  -h, --help      show this help
+  -v, --version   show version
+
+known tools: ${Object.keys(TOOLS).join(", ")}`;
+
+function parseCli() {
+  try {
+    return parseArgs({
+      allowPositionals: true,
+      options: {
+        force: { type: "boolean", default: false },
+        all: { type: "boolean", default: false },
+        help: { type: "boolean", short: "h", default: false },
+        version: { type: "boolean", short: "v", default: false },
+      },
+    });
+  } catch (e) {
+    console.error(`${(e as Error).message}\n\n${USAGE}`);
+    process.exit(1);
+  }
+}
+const { positionals, values } = parseCli();
+
+const [command, ...rest] = positionals;
+const cwd = process.cwd();
+
+if (values.version) {
+  const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+  console.log(pkg.version);
+} else if (values.help || !command) {
+  console.log(USAGE);
+} else {
+  switch (command) {
+    case "link": {
+      const toolNames = values.all || rest.length === 0 ? Object.keys(TOOLS) : rest;
+      link(cwd, toolNames, values.force);
+      break;
+    }
+    case "graph":
+      graph(cwd);
+      break;
+    case "sot":
+      sot(cwd);
+      break;
+    default:
+      console.error(`unknown command: ${command}\n\n${USAGE}`);
+      process.exitCode = 1;
+  }
 }
