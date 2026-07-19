@@ -188,22 +188,38 @@ function tree(dir, prefix = "") {
     });
     return lines;
 }
+const color = process.stdout.isTTY && !process.env.NO_COLOR
+    ? (code, s) => `\x1b[${code}m${s}\x1b[0m`
+    : (_, s) => s;
 function graph(cwd) {
     const agentDir = join(cwd, AGENT_DIR);
-    console.log(`${AGENT_DIR}/`);
-    console.log(tree(agentDir).join("\n"));
-    console.log("\nLinks");
-    for (const [name, tool] of Object.entries(TOOLS)) {
+    const agentTree = tree(agentDir);
+    console.log(`${AGENT_DIR}/${agentTree.length ? "" : color("2", "  (empty)")}`);
+    if (agentTree.length)
+        console.log(agentTree.join("\n"));
+    console.log("");
+    for (const tool of Object.values(TOOLS)) {
         const toolDir = join(cwd, tool.dir);
         if (!existsSync(toolDir))
             continue;
-        console.log(tool.dir);
+        console.log(`${tool.dir}/`);
+        const width = Math.max(...tool.links.map(([t]) => t.length));
         for (const [target, source] of tool.links) {
             const targetPath = join(toolDir, target);
             const sourcePath = join(agentDir, source);
-            const linked = isSymlinkTo(targetPath, sourcePath);
-            const mark = linked ? "->" : existsSync(targetPath) ? "!! (not linked)" : "  (missing)";
-            console.log(`  ${target} ${mark} ${linked ? relative(toolDir, sourcePath) : ""}`.trimEnd());
+            const pad = target.padEnd(width);
+            if (isSymlinkTo(targetPath, sourcePath)) {
+                console.log(`  ${color("32", "✓")} ${pad}  ${color("2", `-> ${relative(toolDir, sourcePath)}`)}`);
+            }
+            else if (existsSync(targetPath)) {
+                console.log(`  ${color("31", "✗")} ${pad}  local copy, not linked ${color("2", "(run: agent sot)")}`);
+            }
+            else if (existsSync(sourcePath)) {
+                console.log(`  ${color("33", "○")} ${pad}  not linked yet ${color("2", "(run: agent link)")}`);
+            }
+            else {
+                console.log(`  ${color("2", `· ${pad}  nothing to link`)}`);
+            }
         }
     }
 }
