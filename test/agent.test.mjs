@@ -42,9 +42,15 @@ test("link refuses to clobber a real file without --force", () => {
   assert.ok(lstatSync(join(dir, ".claude/CLAUDE.md")).isSymbolicLink());
 });
 
-test("link errors on missing .agent and unknown tool", () => {
+test("link creates a missing .agent/ instead of erroring", () => {
   const empty = sandbox();
-  assert.equal(run(empty, "link").status, 1);
+  const { status, out } = run(empty, "link");
+  assert.equal(status, 0);
+  assert.match(out, /\.agent\/ created/);
+  assert.ok(lstatSync(join(empty, ".agent")).isDirectory());
+});
+
+test("link errors on unknown tool", () => {
   const dir = sandbox({ ".agent/AGENTS.md": "x\n" });
   const r = run(dir, "link", "nope");
   assert.equal(r.status, 1);

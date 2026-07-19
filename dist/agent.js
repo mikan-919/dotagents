@@ -24,13 +24,16 @@ function isBrokenSymlink(p) {
     const st = lstatSync(p, { throwIfNoEntry: false });
     return !!st?.isSymbolicLink();
 }
-function link(cwd, toolNames, force) {
+function ensureAgentDir(cwd) {
     const agentDir = join(cwd, AGENT_DIR);
     if (!existsSync(agentDir)) {
-        console.error(`${AGENT_DIR}/ not found in ${cwd}`);
-        process.exitCode = 1;
-        return;
+        mkdirSync(agentDir);
+        console.log(`+ ${AGENT_DIR}/ created`);
     }
+    return agentDir;
+}
+function link(cwd, toolNames, force) {
+    const agentDir = ensureAgentDir(cwd);
     for (const name of toolNames) {
         const tool = TOOLS[name];
         if (!tool) {
@@ -126,12 +129,7 @@ function reconcileExistingItem(agentItemPath, copies) {
     }
 }
 function sot(cwd) {
-    const agentDir = join(cwd, AGENT_DIR);
-    if (!existsSync(agentDir)) {
-        console.error(`${AGENT_DIR}/ not found in ${cwd}`);
-        process.exitCode = 1;
-        return;
-    }
+    const agentDir = ensureAgentDir(cwd);
     const sourceNames = new Set(Object.values(TOOLS).flatMap((t) => t.links.map(([, source]) => source)));
     for (const sourceName of sourceNames) {
         const found = realCopies(cwd, sourceName);
