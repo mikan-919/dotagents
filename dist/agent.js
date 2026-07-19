@@ -10,7 +10,8 @@ const TOOLS = {
     codex: { dir: ".codex", links: [["AGENTS.md", "AGENTS.md"], ["skills", "skills"]] },
     cursor: { dir: ".cursor", links: [["skills", "skills"]] },
 };
-const AGENT_DIR = ".agent";
+const AGENT_DIR = ".agents"; // per the Agent Skills open standard (.agents/skills)
+const LEGACY_AGENT_DIR = ".agent";
 function isSymlinkTo(targetPath, sourcePath) {
     if (!existsSync(targetPath) && !isBrokenSymlink(targetPath))
         return false;
@@ -26,9 +27,16 @@ function isBrokenSymlink(p) {
 }
 function ensureAgentDir(cwd) {
     const agentDir = join(cwd, AGENT_DIR);
+    const legacy = join(cwd, LEGACY_AGENT_DIR);
     if (!existsSync(agentDir)) {
-        mkdirSync(agentDir);
-        console.log(`+ ${AGENT_DIR}/ created`);
+        if (existsSync(legacy) && lstatSync(legacy).isDirectory()) {
+            renameSync(legacy, agentDir);
+            console.log(`~ ${LEGACY_AGENT_DIR}/ renamed to ${AGENT_DIR}/ (old symlinks will be relinked)`);
+        }
+        else {
+            mkdirSync(agentDir);
+            console.log(`+ ${AGENT_DIR}/ created`);
+        }
     }
     return agentDir;
 }
@@ -52,7 +60,8 @@ function link(cwd, toolNames, force) {
                 continue;
             }
             if (existsSync(targetPath) || isBrokenSymlink(targetPath)) {
-                if (!force) {
+                // a broken symlink holds no data — always safe to replace
+                if (!force && existsSync(targetPath)) {
                     console.log(`! ${relative(cwd, targetPath)} exists and is not a matching symlink, skipping (use --force)`);
                     continue;
                 }

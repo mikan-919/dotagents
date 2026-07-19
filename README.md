@@ -2,10 +2,16 @@
 
 [![CI](https://github.com/mikan-919/dotagents/actions/workflows/ci.yml/badge.svg)](https://github.com/mikan-919/dotagents/actions/workflows/ci.yml)
 
-Keep one `.agent/` directory as the source of truth for AI agent config
+Keep one `.agents/` directory as the source of truth for AI agent config
 (`AGENTS.md`, `skills/`, `commands/`), and symlink it into `.claude`,
 `.codex`, `.cursor`, etc. instead of copy-pasting the same files into every
 tool's config directory.
+
+`.agents/` matches the [Agent Skills](https://agentskills.io) open
+standard's repo-level `.agents/skills/` location, so tools that support the
+standard (Codex CLI etc.) pick skills up directly, no symlink needed. A
+legacy `.agent/` directory from older versions of this tool is renamed to
+`.agents/` automatically on the next `link`/`sot`.
 
 ## Usage
 
@@ -34,38 +40,38 @@ agent link --all
 
 ## Commands
 
-- **`agent link [tool...] [--all] [--force]`** — symlink `.agent/` content
+- **`agent link [tool...] [--all] [--force]`** — symlink `.agents/` content
   into the given tools' config dirs (all known tools if none given).
   Existing real files are left alone unless `--force`.
-- **`agent graph`** — print the `.agent/` tree and the current link status
+- **`agent graph`** — print the `.agents/` tree and the current link status
   for every tool:
 
   ```
-  .agent/
+  .agents/
   ├── AGENTS.md
   └── skills/
       └── review/
           └── SKILL.md
 
   .claude/
-    ✓ CLAUDE.md  -> ../.agent/AGENTS.md
+    ✓ CLAUDE.md  -> ../.agents/AGENTS.md
     ✗ skills     local copy, not linked (run: agent sot)
     · commands   nothing to link
   .codex/
-    ✓ AGENTS.md  -> ../.agent/AGENTS.md
+    ✓ AGENTS.md  -> ../.agents/AGENTS.md
     ○ skills     not linked yet (run: agent link)
   ```
 - **`agent sot`** — collect content that was edited directly inside a
-  tool's config dir (instead of through the symlink) back into `.agent`.
+  tool's config dir (instead of through the symlink) back into `.agents`.
   Identical copies found in multiple tools are merged into one; content
-  that exists in only one tool is moved into `.agent` too, then
+  that exists in only one tool is moved into `.agents` too, then
   distributed everywhere via `link`. Copies that differ are left
   untouched and reported as a conflict for you to resolve by hand.
 
 ## Layout
 
 ```
-.agent/
+.agents/
 ├── AGENTS.md
 ├── skills/
 └── commands/
