@@ -124,7 +124,7 @@ function mergeNewItem(agentItemPath, copies) {
     console.log(`+ ${relative(process.cwd(), agentItemPath)} (from ${copies.map((c) => c.tool).join(", ")})`);
     return true;
 }
-// reconcile copies of an item that already exists in .agent: drop matching copies (link() will
+// reconcile copies of an item that already exists in .agents: drop matching copies (link() will
 // re-symlink them), report conflicts and leave mismatched copies alone.
 function reconcileExistingItem(agentItemPath, copies) {
     const canonical = contentHash(agentItemPath);
@@ -233,10 +233,10 @@ function graph(cwd) {
 const USAGE = `usage: agent <command> [options]
 
 commands:
-  link [tool...] [--all] [--force]   symlink .agent/ into tool config dirs
-  graph                              show .agent/ tree and current links
+  link [tool...] [--all] [--force]   symlink .agents/ into tool config dirs
+  graph                              show .agents/ tree and current links
   sot                                collect real content scattered across tool dirs back
-                                      into .agent (deduping identical items, flagging
+                                      into .agents (deduping identical items, flagging
                                       conflicting ones), then link it out to every tool
 
 options:
