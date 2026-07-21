@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { createHash } from "node:crypto";
-import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, renameSync, rmSync, symlinkSync, unlinkSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, renameSync, rmSync, statSync, symlinkSync, unlinkSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { parseArgs } from "node:util";
@@ -77,7 +77,7 @@ function link(cwd, toolNames, force) {
 // content hash of a file or directory tree, for detecting identical items across tools
 function contentHash(path) {
     const hash = createHash("sha256");
-    const st = lstatSync(path);
+    const st = statSync(path); // follow symlinks: hash real content, not link-ness
     if (st.isDirectory()) {
         for (const name of readdirSync(path).sort()) {
             hash.update(name).update("\0").update(contentHash(join(path, name))).update("\0");
