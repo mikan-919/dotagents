@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { createHash } from "node:crypto";
 import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, renameSync, rmSync, symlinkSync, unlinkSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { parseArgs } from "node:util";
 
@@ -245,6 +246,8 @@ commands:
                                       conflicting ones), then link it out to every tool
 
 options:
+  -g, --global    operate on your home directory (~/.claude, ~/.codex, ...)
+                  instead of the current directory
   -h, --help      show this help
   -v, --version   show version
 
@@ -257,6 +260,7 @@ function parseCli() {
       options: {
         force: { type: "boolean", default: false },
         all: { type: "boolean", default: false },
+        global: { type: "boolean", short: "g", default: false },
         help: { type: "boolean", short: "h", default: false },
         version: { type: "boolean", short: "v", default: false },
       },
@@ -269,7 +273,7 @@ function parseCli() {
 const { positionals, values } = parseCli();
 
 const [command, ...rest] = positionals;
-const cwd = process.cwd();
+const cwd = values.global ? homedir() : process.cwd();
 
 if (values.version) {
   const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
